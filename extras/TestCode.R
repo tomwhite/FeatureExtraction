@@ -40,6 +40,25 @@ outputFolder <- "S:/temp/CelecoxibPredictiveModelsPg"
 
 
 conn <- DatabaseConnector::connect(connectionDetails)
+
+# Impala --------------------------------------------------------------
+# NB don't set fftempdir since it results in "cannot change working directory" error
+dbms <- "impala"
+server <- "bottou01.sjc.cloudera.com"
+connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = dbms,
+                                                                server = server,
+                                                                schema="omop_cdm_parquet",
+                                                                pathToDriver = "/impala-drivers/Cloudera_ImpalaJDBC4_2.5.38")
+cdmDatabaseSchema <- "omop_cdm_parquet"
+cohortDatabaseSchema <- "omop_cdm_parquet"
+cohortTable <- "cohort"
+oracleTempSchema <- "omop_cdm_parquet_temp"
+cdmVersion <- "5"
+outputFolder <- "/tmp/CelecoxibPredictiveModelsPg"
+
+
+conn <- DatabaseConnector::connect(connectionDetails)
+
 ### Populate cohort table ###
 sql <- "IF OBJECT_ID('@cohort_database_schema.@cohort_table', 'U') IS NOT NULL
 DROP TABLE @cohort_database_schema.@cohort_table;
@@ -117,9 +136,9 @@ covariateSettings <- FeatureExtraction::createCovariateSettings(useCovariateDemo
                                                                 addDescendantsToExclude = TRUE,
                                                                 includedCovariateConceptIds = c(),
                                                                 addDescendantsToInclude = TRUE,
-                                                                deleteCovariatesSmallCount = 100)
+                                                                deleteCovariatesSmallCount = 0)
 
-covs <- getDbCovariateData(connectionDetails = connectionDetails,
+covs <- FeatureExtraction::getDbCovariateData(connectionDetails = connectionDetails,
                            oracleTempSchema = oracleTempSchema,
                            cdmVersion = cdmVersion,
                            cdmDatabaseSchema = cdmDatabaseSchema,
@@ -131,9 +150,9 @@ covs <- getDbCovariateData(connectionDetails = connectionDetails,
                            normalize = TRUE)
 any(covs$covariateRef$conceptId %in% cids)
 summary(covs)
-saveCovariateData(covs, "s:/temp/covsOld")
+FeatureExtraction::saveCovariateData(covs, "/tmp/covsOld")
 
-covs <- loadCovariateData("s:/temp/covsOld")
+covs <- FeatureExtraction::loadCovariateData("/tmp/covsOld")
 library(ffbase)
 covs$covariateRef[covs$covariateRef$analysisId == 4, ]
 
